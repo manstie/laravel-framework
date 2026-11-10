@@ -118,6 +118,27 @@ class CacheDatabaseStoreTest extends TestCase
         $this->assertTrue($result);
     }
 
+    public function testValueIsAddedWithInsertOrIgnore()
+    {
+        $store = $this->getMockBuilder(DatabaseStore::class)->onlyMethods(['get', 'getTime'])->setConstructorArgs($this->getMocks())->getMock();
+        $table = Double::for(Builder::class);
+        $store->expects($this->once())->method('get')->with('foo')->willReturn(null);
+        $store->expects($this->once())->method('getTime')->willReturn(1);
+        $store->getConnection()->expects('table')->with('table')->returns($table);
+        $table->expects('insertOrIgnore')->with(['key' => 'prefixfoo', 'value' => serialize('bar'), 'expiration' => 61])->returns(1);
+
+        $this->assertTrue($store->add('foo', 'bar', 60));
+    }
+
+    public function testValueIsNotAddedWhenItAlreadyExists()
+    {
+        $store = $this->getMockBuilder(DatabaseStore::class)->onlyMethods(['get'])->setConstructorArgs($this->getMocks())->getMock();
+        $store->expects($this->once())->method('get')->with('foo')->willReturn('baz');
+        $store->getConnection()->expects('table')->never();
+
+        $this->assertFalse($store->add('foo', 'bar', 60));
+    }
+
     public function testForeverCallsStoreItemWithReallyLongTime()
     {
         $store = $this->getMockBuilder(DatabaseStore::class)->onlyMethods(['put'])->setConstructorArgs($this->getMocks())->getMock();
